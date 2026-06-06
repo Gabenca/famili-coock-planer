@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum HouseholdRole {
+  owner
+  member
+}
+
+enum InviteStatus {
+  active
+  accepted
+  revoked
+  expired
+}
+
+enum ShoppingSource {
+  generated
+  manual
+}
+
+model User {
+  id          String   @id @default(cuid())
+  telegramId  String   @unique
+  firstName   String?
+  lastName    String?
+  username    String?
+  languageCode String?
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @updatedAt
+
+  memberships HouseholdMember[]
+  acceptedInvites Invite[] @relation("InviteAcceptedBy")
+}
+
+model Household {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      HouseholdMember[]
+  invites      Invite[]
+  products     Product[]
+  recipes      Recipe[]
+  mealPlanItems MealPlanItem[]
+  manualItems  ShoppingManualItem[]
+  checkedItems ShoppingCheckState[]
+}
+
+model HouseholdMember {
+  id          String        @id @default(cuid())
+  householdId String
+  userId      String
+  role        HouseholdRole @default(member)
+  createdAt   DateTime      @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, userId])
+}
+
+model Invite {
+  id              String       @id @default(cuid())
+  householdId      String
+  token           String       @unique
+  status          InviteStatus @default(active)
+  expiresAt       DateTime
+  acceptedByUserId String?
+  createdAt       DateTime     @default(now())
+  acceptedAt      DateTime?
+
+  household      Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  acceptedByUser User?     @relation("InviteAcceptedBy", fields: [acceptedByUserId], references: [id])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  householdId String
+  name        String
+  normalizedName String
+  category    String?
+  defaultUnit String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  ingredients RecipeIngredient[]
+
+  @@unique([householdId, normalizedName])
+}
+
+model Recipe {
+  id          String   @id @default(cuid())
+  householdId String
+  title       String
+  instructions String
+  servings    Int      @default(2)
+  photoObjectKey String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  ingredients RecipeIngredient[]
+  planItems   MealPlanItem[]
+}
+
+model RecipeIngredient {
+  id        String @id @default(cuid())
+  recipeId  String
+  productId String?
+  name      String
+  quantity  Float
+  unit      String
+  note      String?
+  sortOrder Int    @default(0)
+
+  recipe  Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+}
+
+model MealPlanItem {
+  id          String   @id @default(cuid())
+  householdId String
+  recipeId    String
+  date        DateTime
+  mealSlot    String
+  servingsMultiplier Float @default(1)
+  createdAt   DateTime @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  recipe    Recipe    @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, date])
+}
+
+model ShoppingManualItem {
+  id          String   @id @default(cuid())
+  householdId String
+  weekStart   DateTime
+  name        String
+  quantity    Float
+  unit        String
+  createdAt   DateTime @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+}
+
+model ShoppingCheckState {
+  id          String   @id @default(cuid())
+  householdId String
+  weekStart   DateTime
+  itemKey     String
+  checked     Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, weekStart, itemKey])
+}
