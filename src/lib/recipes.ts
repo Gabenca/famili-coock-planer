@@ -1,8 +1,11 @@
 import { prisma } from "./prisma";
+import { deleteRecipePhotoObject, getRecipePhotoUrl, uploadRecipePhoto } from "./recipe-photos";
 
 export type RecipeInput = {
   title: string;
   instructions: string;
+  sourceUrl?: string;
+  photoObjectKey?: string;
   servings?: number;
   ingredients: Array<{
     name: string;
@@ -37,7 +40,7 @@ export async function listRecipes(householdId: string, client: RecipeClient = pr
     }
   });
 
-  return recipes.map(formatRecipe);
+  return Promise.all(recipes.map(formatRecipe));
 }
 
 export async function createRecipe(householdId: string, input: RecipeInput, client: RecipeClient = prisma) {
@@ -49,6 +52,8 @@ export async function createRecipe(householdId: string, input: RecipeInput, clie
         householdId,
         title: recipe.title,
         instructions: recipe.instructions,
+        sourceUrl: recipe.sourceUrl ?? null,
+        photoObjectKey: recipe.photoObjectKey ?? null,
         servings: recipe.servings
       }
     });
@@ -105,9 +110,58 @@ export async function deleteRecipe(householdId: string, recipeId: string, client
   return deleted.count > 0;
 }
 
+export async function updateRecipePhoto(householdId: string, recipeId: string, file: File, client: RecipeClient = prisma) {
+  const recipe = await client.recipe.findFirst({
+    where: {
+      id: recipeId,
+      householdId
+    },
+    include: {
+      ingredients: {
+        orderBy: {
+          sortOrder: "asc"
+        }
+      }
+    }
+  });
+
+  if (!recipe) {
+    return null;
+  }
+
+  const nextObjectKey = await uploadRecipePhoto(householdId, file);
+  const updatedRecipe = await client.recipe.update({
+    where: {
+      id: recipe.id
+    },
+    data: {
+      photoObjectKey: nextObjectKey
+    },
+    include: {
+      ingredients: {
+        orderBy: {
+          sortOrder: "asc"
+        }
+      }
+    }
+  });
+
+  if (recipe.photoObjectKey) {
+    try {
+      await deleteRecipePhotoObject(recipe.photoObjectKey);
+    } catch {
+      // Replacing the visible recipe photo should not fail because stale cleanup failed.
+    }
+  }
+
+  return formatRecipe(updatedRecipe);
+}
+
 function normalizeRecipeInput(input: RecipeInput) {
   const title = input.title.trim();
   const instructions = input.instructions.trim();
+  const sourceUrl = input.sourceUrl?.trim();
+  const photoObjectKey = input.photoObjectKey?.trim();
   const servings = input.servings ?? 2;
   const ingredients = input.ingredients
     .map((ingredient) => ({
@@ -124,17 +178,20 @@ function normalizeRecipeInput(input: RecipeInput) {
   return {
     title,
     instructions,
+    sourceUrl: sourceUrl || undefined,
+    photoObjectKey: photoObjectKey || undefined,
     servings,
     ingredients
   };
 }
 
-function formatRecipe(recipe: {
+async function formatRecipe(recipe: {
   id: string;
   title: string;
   instructions: string;
   servings: number;
   photoObjectKey: string | null;
+  sourceUrl: string | null;
   ingredients: Array<{
     productId: string | null;
     name: string;
@@ -147,7 +204,8 @@ function formatRecipe(recipe: {
     title: recipe.title,
     instructions: recipe.instructions,
     servings: recipe.servings,
-    photoUrl: recipe.photoObjectKey,
+    photoUrl: await getRecipePhotoUrl(recipe.photoObjectKey),
+    sourceUrl: recipe.sourceUrl,
     ingredients: recipe.ingredients.map((ingredient) => ({
       productId: ingredient.productId ?? undefined,
       name: ingredient.name,

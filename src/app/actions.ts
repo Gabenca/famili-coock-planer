@@ -6,7 +6,8 @@ import { mealPlanCreateSchema, mealPlanUpdateSchema, recipeCreateSchema, shoppin
 import { getHouseholdSessionForTelegramUser, HouseholdSessionError } from "@/lib/household-session";
 import { createHouseholdInvite, HouseholdAccessError } from "@/lib/households";
 import { createMealPlanItem, deleteMealPlanItem, MealPlanValidationError, updateMealPlanItem } from "@/lib/meal-plans";
-import { createRecipe, RecipeValidationError } from "@/lib/recipes";
+import { RecipePhotoValidationError, uploadRecipePhoto } from "@/lib/recipe-photos";
+import { createRecipe, RecipeValidationError, updateRecipePhoto } from "@/lib/recipes";
 import { readSessionCookieValue, sessionCookieName } from "@/lib/session-cookie";
 import { createManualShoppingItem, ShoppingDataValidationError, updateShoppingCheckState } from "@/lib/shopping-data";
 import { TelegramAuthError } from "@/lib/telegram-auth";
@@ -116,6 +117,7 @@ export async function createManualShoppingItemAction(input: ManualShoppingItemAc
 export type RecipeCreateActionInput = {
   title: string;
   instructions: string;
+  sourceUrl?: string;
   servings?: number;
   ingredients: Array<{
     name: string;
@@ -130,6 +132,7 @@ export type RecipeActionItem = {
   instructions: string;
   servings: number;
   photoUrl?: string | null;
+  sourceUrl?: string | null;
   ingredients: Array<{
     productId?: string;
     name: string;
@@ -148,18 +151,60 @@ export type RecipeCreateActionState =
       error: string;
     };
 
-export async function createRecipeAction(input: RecipeCreateActionInput): Promise<RecipeCreateActionState> {
+export async function createRecipeAction(input: RecipeCreateActionInput, photoForm?: FormData): Promise<RecipeCreateActionState> {
   try {
     const session = await getActionSession();
-    const recipe = await createRecipe(session.householdId, recipeCreateSchema.parse(input));
+    const photoFile = getRecipePhotoFile(photoForm);
+    const photoObjectKey = photoFile ? await uploadRecipePhoto(session.householdId, photoFile) : undefined;
+    const recipe = await createRecipe(session.householdId, { ...recipeCreateSchema.parse(input), ...(photoObjectKey ? { photoObjectKey } : {}) });
 
     return { recipe };
   } catch (error) {
-    if (error instanceof TelegramAuthError || error instanceof HouseholdSessionError || error instanceof RecipeValidationError) {
+    if (error instanceof TelegramAuthError || error instanceof HouseholdSessionError || error instanceof RecipeValidationError || error instanceof RecipePhotoValidationError) {
       return { error: "Не удалось добавить рецепт" };
     }
 
     return { error: "Не удалось добавить рецепт" };
+  }
+}
+
+export type RecipePhotoUpdateActionInput = {
+  recipeId: string;
+};
+
+export type RecipePhotoUpdateActionState =
+  | {
+      recipe: RecipeActionItem;
+      error?: never;
+    }
+  | {
+      recipe?: never;
+      error: string;
+    };
+
+export async function updateRecipePhotoAction(input: RecipePhotoUpdateActionInput, photoForm: FormData): Promise<RecipePhotoUpdateActionState> {
+  try {
+    const session = await getActionSession();
+    const recipeId = input.recipeId.trim();
+    const photoFile = getRecipePhotoFile(photoForm);
+
+    if (!recipeId || !photoFile) {
+      return { error: "Не удалось обновить фото" };
+    }
+
+    const recipe = await updateRecipePhoto(session.householdId, recipeId, photoFile);
+
+    if (!recipe) {
+      return { error: "Не удалось обновить фото" };
+    }
+
+    return { recipe };
+  } catch (error) {
+    if (error instanceof TelegramAuthError || error instanceof HouseholdSessionError || error instanceof RecipeValidationError || error instanceof RecipePhotoValidationError) {
+      return { error: "Не удалось обновить фото" };
+    }
+
+    return { error: "Не удалось обновить фото" };
   }
 }
 
@@ -251,6 +296,16 @@ export async function deleteMealPlanItemAction(input: MealPlanDeleteActionInput)
 
     return { error: "Не удалось обновить план" };
   }
+}
+
+function getRecipePhotoFile(photoForm?: FormData) {
+  const file = photoForm?.get("photo");
+
+  if (!(file instanceof File) || file.size === 0) {
+    return undefined;
+  }
+
+  return file;
 }
 
 async function getActionSession() {

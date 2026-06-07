@@ -4,6 +4,7 @@ import type {
   createMealPlanItemAction,
   createRecipeAction,
   deleteMealPlanItemAction,
+  updateRecipePhotoAction,
   updateMealPlanItemAction,
   updateShoppingCheckStateAction
 } from "@/app/actions";
@@ -101,6 +102,7 @@ export type WorkflowActions = {
   createMealPlanItemAction: typeof createMealPlanItemAction;
   createRecipeAction: typeof createRecipeAction;
   deleteMealPlanItemAction: typeof deleteMealPlanItemAction;
+  updateRecipePhotoAction: typeof updateRecipePhotoAction;
   updateMealPlanItemAction: typeof updateMealPlanItemAction;
   updateShoppingCheckStateAction: typeof updateShoppingCheckStateAction;
 };
@@ -119,6 +121,8 @@ export type AddRecipeInput = {
   title: string;
   ingredients: RecipeIngredient[];
   instructions: string;
+  sourceUrl?: string;
+  photoFile?: File;
   photoUrl?: string;
 };
 

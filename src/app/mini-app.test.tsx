@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { demoWeekDates } from "@/data/demo";
 import { MiniApp } from "@/frontend/pages/mini-app";
 import { resetMiniAppStore } from "@/frontend/pages/mini-app/model";
 
@@ -11,6 +12,7 @@ const actionMocks = vi.hoisted(() => ({
   createMealPlanItemAction: vi.fn(),
   createRecipeAction: vi.fn(),
   deleteMealPlanItemAction: vi.fn(),
+  updateRecipePhotoAction: vi.fn(),
   updateMealPlanItemAction: vi.fn(),
   updateShoppingCheckStateAction: vi.fn()
 }));
@@ -21,6 +23,7 @@ vi.mock("@/app/actions", () => ({
   createMealPlanItemAction: actionMocks.createMealPlanItemAction,
   createRecipeAction: actionMocks.createRecipeAction,
   deleteMealPlanItemAction: actionMocks.deleteMealPlanItemAction,
+  updateRecipePhotoAction: actionMocks.updateRecipePhotoAction,
   updateMealPlanItemAction: actionMocks.updateMealPlanItemAction,
   updateShoppingCheckStateAction: actionMocks.updateShoppingCheckStateAction
 }));
@@ -32,13 +35,14 @@ describe("MiniApp", () => {
     actionMocks.createMealPlanItemAction.mockReset();
     actionMocks.createRecipeAction.mockReset();
     actionMocks.deleteMealPlanItemAction.mockReset();
+    actionMocks.updateRecipePhotoAction.mockReset();
     actionMocks.updateMealPlanItemAction.mockReset();
     actionMocks.updateShoppingCheckStateAction.mockReset();
     actionMocks.createManualShoppingItemAction.mockResolvedValue({ item: { id: "manual-1", name: "Кофе", quantity: 1, unit: "шт" } });
     actionMocks.createMealPlanItemAction.mockResolvedValue({
       item: {
         id: "remote-plan",
-        date: "2026-06-01",
+        date: demoWeekDates[0],
         slot: "breakfast",
         recipeId: "remote-recipe",
         servingsMultiplier: 1
@@ -57,7 +61,7 @@ describe("MiniApp", () => {
     actionMocks.updateMealPlanItemAction.mockResolvedValue({
       item: {
         id: "remote-plan",
-        date: "2026-06-01",
+        date: demoWeekDates[0],
         slot: "breakfast",
         recipeId: "remote-recipe",
         servingsMultiplier: 2
@@ -317,7 +321,7 @@ describe("MiniApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "Неделя" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Добавить рецепт в завтрак" })[0]);
 
-    await waitFor(() => expect(actionMocks.createMealPlanItemAction).toHaveBeenCalledWith({ date: "2026-06-01", slot: "breakfast", recipeId: "remote-recipe", servingsMultiplier: 1 }));
+    await waitFor(() => expect(actionMocks.createMealPlanItemAction).toHaveBeenCalledWith({ date: demoWeekDates[0], slot: "breakfast", recipeId: "remote-recipe", servingsMultiplier: 1 }));
     expect(fetchMock).not.toHaveBeenCalledWith("/api/meal-plans", expect.objectContaining({ method: "POST" }));
   });
 
@@ -335,7 +339,7 @@ describe("MiniApp", () => {
       plan: [
         {
           id: "remote-plan",
-          date: "2026-06-01",
+          date: demoWeekDates[0],
           slot: "breakfast",
           recipeId: "remote-recipe",
           servingsMultiplier: 1
@@ -384,7 +388,7 @@ describe("MiniApp", () => {
       createResponse.resolve({
         item: {
           id: "remote-plan",
-          date: "2026-06-01",
+          date: demoWeekDates[0],
           slot: "breakfast",
           recipeId: "remote-recipe",
           servingsMultiplier: 1
@@ -410,7 +414,7 @@ describe("MiniApp", () => {
       plan: [
         {
           id: "remote-plan",
-          date: "2026-06-01",
+          date: demoWeekDates[0],
           slot: "breakfast",
           recipeId: "remote-recipe",
           servingsMultiplier: 1
@@ -431,7 +435,7 @@ describe("MiniApp", () => {
       updateResponse.resolve({
         item: {
           id: "remote-plan",
-          date: "2026-06-01",
+          date: demoWeekDates[0],
           slot: "breakfast",
           recipeId: "remote-recipe",
           servingsMultiplier: 2
@@ -469,7 +473,7 @@ describe("MiniApp", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Отметить Кофе" }));
 
-    await waitFor(() => expect(actionMocks.updateShoppingCheckStateAction).toHaveBeenCalledWith({ weekStart: "2026-06-01", itemKey: "manual:coffee", checked: true }));
+    await waitFor(() => expect(actionMocks.updateShoppingCheckStateAction).toHaveBeenCalledWith({ weekStart: demoWeekDates[0], itemKey: "manual:coffee", checked: true }));
     expect(fetchMock).not.toHaveBeenCalledWith("/api/shopping-list", expect.objectContaining({ method: "PATCH" }));
   });
 
@@ -546,7 +550,7 @@ describe("MiniApp", () => {
     fireEvent.change(screen.getByLabelText("Количество продукта"), { target: { value: "2" } });
     fireEvent.click(screen.getByRole("button", { name: "Добавить продукт" }));
 
-    await waitFor(() => expect(actionMocks.createManualShoppingItemAction).toHaveBeenCalledWith({ weekStart: "2026-06-01", name: "Чай", quantity: 2, unit: "шт" }));
+    await waitFor(() => expect(actionMocks.createManualShoppingItemAction).toHaveBeenCalledWith({ weekStart: demoWeekDates[0], name: "Чай", quantity: 2, unit: "шт" }));
     expect(fetchMock).not.toHaveBeenCalledWith("/api/shopping-list", expect.objectContaining({ method: "POST" }));
   });
 

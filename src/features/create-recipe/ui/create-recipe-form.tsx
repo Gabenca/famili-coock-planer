@@ -19,13 +19,15 @@ const emptyIngredientDraft = (): RecipeIngredientDraft => ({
 });
 
 type CreateRecipeFormProps = {
-  onAddRecipe: (title: string, ingredients: RecipeIngredient[], instructions: string, photoUrl?: string) => boolean | Promise<boolean>;
+  onAddRecipe: (title: string, ingredients: RecipeIngredient[], instructions: string, sourceUrl?: string, photoFile?: File, photoUrl?: string) => boolean | Promise<boolean>;
 };
 
 export function CreateRecipeForm({ onAddRecipe }: CreateRecipeFormProps) {
   const [title, setTitle] = useState("");
   const [instructions, setInstructions] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | undefined>();
+  const [photoFile, setPhotoFile] = useState<File | undefined>();
   const [ingredients, setIngredients] = useState<RecipeIngredientDraft[]>(() => [emptyIngredientDraft()]);
 
   function updateIngredient(id: string, field: keyof Omit<RecipeIngredientDraft, "id">, value: string) {
@@ -45,7 +47,7 @@ export function CreateRecipeForm({ onAddRecipe }: CreateRecipeFormProps) {
     }));
 
     const beforeSubmitTitle = title;
-    const submitted = await onAddRecipe(title, recipeIngredients, instructions, photoUrl);
+    const submitted = await onAddRecipe(title, recipeIngredients, instructions, sourceUrl, photoFile, photoUrl);
 
     if (!submitted || !beforeSubmitTitle.trim() || !instructions.trim() || recipeIngredients.every((ingredient) => !ingredient.name.trim() || !ingredient.unit.trim() || !Number.isFinite(ingredient.quantity) || ingredient.quantity <= 0)) {
       return;
@@ -53,16 +55,20 @@ export function CreateRecipeForm({ onAddRecipe }: CreateRecipeFormProps) {
 
     setTitle("");
     setInstructions("");
+    setSourceUrl("");
     setPhotoUrl(undefined);
+    setPhotoFile(undefined);
     setIngredients([emptyIngredientDraft()]);
   }
 
   function attachPhoto(file?: File) {
     if (!file) {
       setPhotoUrl(undefined);
+      setPhotoFile(undefined);
       return;
     }
 
+    setPhotoFile(file);
     setPhotoUrl(URL.createObjectURL(file));
   }
 
@@ -84,6 +90,8 @@ export function CreateRecipeForm({ onAddRecipe }: CreateRecipeFormProps) {
         }}
       >
         <input className="h-11 w-full rounded-md border border-ink/10 bg-white/70 px-3 text-base font-semibold outline-none focus:border-clay" placeholder="Название рецепта" value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Название рецепта" />
+
+        <input className="h-11 w-full rounded-md border border-ink/10 bg-white/70 px-3 text-base font-semibold outline-none focus:border-clay" type="url" placeholder="Ссылка на рецепт" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} aria-label="Ссылка на рецепт" />
 
         <label className="grid min-h-28 cursor-pointer grid-cols-photo-picker gap-3 rounded-md border border-dashed border-ink/20 bg-white/55 p-2">
           <span className="relative flex h-full min-h-24 items-center justify-center overflow-hidden rounded-md bg-ink/5 text-slate">

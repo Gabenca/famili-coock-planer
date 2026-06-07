@@ -4,7 +4,7 @@ import { demoWeekDates } from "@/data/demo";
 import { selectShoppingItems } from "./selectors";
 import { resetMiniAppStore, useMiniAppStore } from "./store";
 import type { ReadyAuthState, WorkflowDependencies } from "./types";
-import { addMeal, addRecipe, bootstrapTelegramAuth, loadHouseholdData, removeMeal, toggleShoppingItem, updateMealServings } from "./workflows";
+import { addMeal, addRecipe, bootstrapTelegramAuth, loadHouseholdData, removeMeal, toggleShoppingItem, updateMealServings, updateRecipePhoto } from "./workflows";
 
 describe("Mini App workflows", () => {
   beforeEach(() => {
@@ -556,6 +556,106 @@ describe("Mini App workflows", () => {
     expect(useMiniAppStore.getState().dataError).toBe("");
   });
 
+  it("passes recipe source URL to the create recipe action", async () => {
+    resetReadyStore();
+    const deps = createWorkflowDependencies();
+    deps.createRecipeAction = vi.fn(async () => ({
+      recipe: {
+        id: "recipe-2",
+        title: "Оладьи",
+        instructions: "Обжарить.",
+        servings: 2,
+        sourceUrl: "https://example.com/oladi",
+        ingredients: [{ productId: "flour", name: "Мука", quantity: 200, unit: "г" }]
+      }
+    }));
+
+    await addRecipe(
+      {
+        title: "Оладьи",
+        instructions: "Обжарить.",
+        sourceUrl: " https://example.com/oladi ",
+        ingredients: [{ productId: "flour", name: "Мука", quantity: 200, unit: "г" }]
+      },
+      deps
+    );
+
+    expect(deps.createRecipeAction).toHaveBeenCalledWith({
+      title: "Оладьи",
+      instructions: "Обжарить.",
+      servings: 2,
+      sourceUrl: "https://example.com/oladi",
+      ingredients: [{ name: "Мука", quantity: 200, unit: "г" }]
+    });
+    expect(useMiniAppStore.getState().recipes.at(-1)).toMatchObject({
+      title: "Оладьи",
+      sourceUrl: "https://example.com/oladi"
+    });
+  });
+
+  it("passes selected recipe photo files to the create recipe action", async () => {
+    resetReadyStore();
+    const deps = createWorkflowDependencies();
+    const photoFile = new File(["image"], "oladi.webp", { type: "image/webp" });
+    deps.createRecipeAction = vi.fn(async () => ({
+      recipe: {
+        id: "recipe-2",
+        title: "Оладьи",
+        instructions: "Обжарить.",
+        servings: 2,
+        photoUrl: "https://photos.example/oladi.webp",
+        ingredients: [{ productId: "flour", name: "Мука", quantity: 200, unit: "г" }]
+      }
+    }));
+
+    await addRecipe(
+      {
+        title: "Оладьи",
+        instructions: "Обжарить.",
+        photoFile,
+        photoUrl: "blob:local-preview",
+        ingredients: [{ productId: "flour", name: "Мука", quantity: 200, unit: "г" }]
+      },
+      deps
+    );
+
+    expect(deps.createRecipeAction).toHaveBeenCalledWith(
+      {
+        title: "Оладьи",
+        instructions: "Обжарить.",
+        servings: 2,
+        ingredients: [{ name: "Мука", quantity: 200, unit: "г" }]
+      },
+      expect.any(FormData)
+    );
+    const submittedForm = vi.mocked(deps.createRecipeAction).mock.calls[0][1] as FormData;
+    expect(submittedForm.get("photo")).toBe(photoFile);
+    expect(useMiniAppStore.getState().recipes.at(-1)?.photoUrl).toBe("https://photos.example/oladi.webp");
+  });
+
+  it("updates recipe photos through the photo action", async () => {
+    resetReadyStore();
+    const deps = createWorkflowDependencies();
+    const photoFile = new File(["image"], "new.webp", { type: "image/webp" });
+    deps.updateRecipePhotoAction = vi.fn(async () => ({
+      recipe: {
+        id: "recipe-1",
+        title: "Омлет",
+        instructions: "Взбить яйца.",
+        servings: 2,
+        photoUrl: "https://photos.example/omelette.webp",
+        ingredients: [{ productId: "egg", name: "Яйца", quantity: 4, unit: "шт" }]
+      }
+    }));
+
+    await updateRecipePhoto("recipe-1", photoFile, "blob:replacement", deps);
+
+    expect(deps.updateRecipePhotoAction).toHaveBeenCalledWith({ recipeId: "recipe-1" }, expect.any(FormData));
+    const submittedForm = vi.mocked(deps.updateRecipePhotoAction).mock.calls[0][1] as FormData;
+    expect(submittedForm.get("photo")).toBe(photoFile);
+    expect(useMiniAppStore.getState().recipes[0].photoUrl).toBe("https://photos.example/omelette.webp");
+  });
+
   it("skips applying household data when auth changes before fetch resolves", async () => {
     const firstAuth = readyAuth("household-1", "query_id=old");
     const nextAuth = readyAuth("household-2", "query_id=new");
@@ -696,6 +796,7 @@ function createWorkflowDependencies({
     createMealPlanItemAction: vi.fn(async () => createMealPlanItemResult),
     createRecipeAction: vi.fn(),
     deleteMealPlanItemAction: vi.fn(),
+    updateRecipePhotoAction: vi.fn(),
     updateMealPlanItemAction: vi.fn(),
     updateShoppingCheckStateAction: vi.fn(async () => updateShoppingCheckStateResult)
   };

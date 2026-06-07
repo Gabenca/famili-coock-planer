@@ -7,10 +7,11 @@ import type { RecipeIngredient } from "@/lib/shopping-list";
 type RecipesPanelProps = {
   recipes: AppRecipe[];
   showDemoHighlights: boolean;
-  onAddRecipe: (title: string, ingredients: RecipeIngredient[], instructions: string, photoUrl?: string) => boolean | Promise<boolean>;
+  onAddRecipe: (title: string, ingredients: RecipeIngredient[], instructions: string, sourceUrl?: string, photoFile?: File, photoUrl?: string) => boolean | Promise<boolean>;
+  onUpdateRecipePhoto: (recipeId: string, photoFile: File, photoUrl: string) => boolean | Promise<boolean>;
 };
 
-export function RecipesPanel({ recipes, showDemoHighlights, onAddRecipe }: RecipesPanelProps) {
+export function RecipesPanel({ recipes, showDemoHighlights, onAddRecipe, onUpdateRecipePhoto }: RecipesPanelProps) {
   return (
     <div className="space-y-3">
       <CreateRecipeForm onAddRecipe={onAddRecipe} />
@@ -31,7 +32,7 @@ export function RecipesPanel({ recipes, showDemoHighlights, onAddRecipe }: Recip
       ) : null}
 
       {recipes.map((recipe, index) => (
-        <RecipeCard key={recipe.id} recipe={recipe} index={index} />
+        <RecipeCard key={recipe.id} recipe={recipe} index={index} onUpdatePhoto={onUpdateRecipePhoto} />
       ))}
     </div>
   );

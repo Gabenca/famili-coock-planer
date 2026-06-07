@@ -4,6 +4,7 @@ import {
   createMealPlanItemAction,
   createRecipeAction,
   deleteMealPlanItemAction,
+  updateRecipePhotoAction,
   updateMealPlanItemAction,
   updateShoppingCheckStateAction
 } from "@/app/actions";
@@ -28,6 +29,7 @@ export const browserWorkflowDependencies: WorkflowDependencies = {
   createMealPlanItemAction,
   createRecipeAction,
   deleteMealPlanItemAction,
+  updateRecipePhotoAction,
   updateMealPlanItemAction,
   updateShoppingCheckStateAction
 };
@@ -385,6 +387,7 @@ export async function addRecipe(input: AddRecipeInput, deps: WorkflowDependencie
   const state = useMiniAppStore.getState();
   const trimmedTitle = input.title.trim();
   const trimmedInstructions = input.instructions.trim();
+  const trimmedSourceUrl = input.sourceUrl?.trim();
   const validIngredients = input.ingredients
     .map((ingredient) => ({
       ...ingredient,
@@ -400,16 +403,19 @@ export async function addRecipe(input: AddRecipeInput, deps: WorkflowDependencie
 
   if (state.authState.status === "ready") {
     try {
-      const result = await deps.createRecipeAction({
+      const recipeInput = {
         title: trimmedTitle,
         instructions: trimmedInstructions,
+        ...(trimmedSourceUrl ? { sourceUrl: trimmedSourceUrl } : {}),
         servings: 2,
         ingredients: validIngredients.map((ingredient) => ({
           name: ingredient.name,
           quantity: ingredient.quantity,
           unit: ingredient.unit
         }))
-      });
+      };
+      const photoForm = input.photoFile ? createRecipePhotoForm(input.photoFile) : undefined;
+      const result = photoForm ? await deps.createRecipeAction(recipeInput, photoForm) : await deps.createRecipeAction(recipeInput);
 
       if ("error" in result) {
         throw new Error(result.error);
@@ -419,7 +425,7 @@ export async function addRecipe(input: AddRecipeInput, deps: WorkflowDependencie
         return false;
       }
 
-      useMiniAppStore.getState().addRecipe({ ...result.recipe, photoUrl: input.photoUrl });
+      useMiniAppStore.getState().addRecipe({ ...result.recipe, photoUrl: result.recipe.photoUrl ?? input.photoUrl });
       await refreshShoppingList(state.authState, deps);
       return true;
     } catch {
@@ -435,12 +441,47 @@ export async function addRecipe(input: AddRecipeInput, deps: WorkflowDependencie
     id: createRecipeId(trimmedTitle, state.recipes),
     title: trimmedTitle,
     instructions: trimmedInstructions,
+    sourceUrl: trimmedSourceUrl || undefined,
     photoUrl: input.photoUrl,
     ingredients: validIngredients.map((ingredient) => ({
       ...ingredient,
       productId: ingredient.productId || createProductKey(ingredient.name)
     }))
   });
+  return true;
+}
+
+export async function updateRecipePhoto(recipeId: string, photoFile: File, photoUrl: string, deps: WorkflowDependencies = browserWorkflowDependencies) {
+  const state = useMiniAppStore.getState();
+
+  if (!recipeId || !state.recipes.some((recipe) => recipe.id === recipeId)) {
+    return false;
+  }
+
+  if (state.authState.status === "ready") {
+    try {
+      const result = await deps.updateRecipePhotoAction({ recipeId }, createRecipePhotoForm(photoFile));
+
+      if ("error" in result) {
+        throw new Error(result.error);
+      }
+
+      if (!isCurrentReadyAuth(state.authState)) {
+        return false;
+      }
+
+      useMiniAppStore.getState().setRecipes(useMiniAppStore.getState().recipes.map((recipe) => (recipe.id === recipeId ? result.recipe : recipe)));
+      return true;
+    } catch {
+      if (isCurrentReadyAuth(state.authState)) {
+        useMiniAppStore.getState().setDataError("Не удалось обновить фото");
+      }
+
+      return false;
+    }
+  }
+
+  state.setRecipes(state.recipes.map((recipe) => (recipe.id === recipeId ? { ...recipe, photoUrl } : recipe)));
   return true;
 }
 
@@ -483,6 +524,12 @@ function createRecipeId(title: string, recipes: AppRecipe[]) {
   }
 
   return nextId;
+}
+
+function createRecipePhotoForm(file: File) {
+  const form = new FormData();
+  form.set("photo", file);
+  return form;
 }
 
 function authRequestHeaders(auth: ReadyAuthState) {

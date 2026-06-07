@@ -71,6 +71,53 @@ describe("API input validation", () => {
     expect(mocks.createRecipe).not.toHaveBeenCalled();
   });
 
+  it("rejects invalid recipe source URL before calling the recipe service", async () => {
+    const response = await postRecipe(
+      jsonRequest("/api/recipes", {
+        title: "Сырники",
+        instructions: "Смешать и обжарить.",
+        sourceUrl: "recipe.example.com",
+        ingredients: [{ name: "Творог", quantity: 400, unit: "г" }]
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.createRecipe).not.toHaveBeenCalled();
+  });
+
+  it("treats blank recipe source URL as omitted before calling the recipe service", async () => {
+    await postRecipe(
+      jsonRequest("/api/recipes", {
+        title: "Сырники",
+        instructions: "Смешать и обжарить.",
+        sourceUrl: "   ",
+        ingredients: [{ name: "Творог", quantity: 400, unit: "г" }]
+      })
+    );
+
+    expect(mocks.createRecipe).toHaveBeenCalledWith(
+      "household-1",
+      expect.objectContaining({
+        title: "Сырники",
+        sourceUrl: undefined
+      })
+    );
+  });
+
+  it("rejects non-http recipe source URLs before calling the recipe service", async () => {
+    const response = await postRecipe(
+      jsonRequest("/api/recipes", {
+        title: "Сырники",
+        instructions: "Смешать и обжарить.",
+        sourceUrl: "ftp://example.com/recipe",
+        ingredients: [{ name: "Творог", quantity: 400, unit: "г" }]
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.createRecipe).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid meal plan create input before calling the meal plan service", async () => {
     const response = await postMealPlan(
       jsonRequest("/api/meal-plans", {

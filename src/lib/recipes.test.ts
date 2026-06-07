@@ -1,6 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createRecipe, deleteRecipe, listRecipes, RecipeValidationError } from "./recipes";
+import { createRecipe, deleteRecipe, listRecipes, RecipeValidationError, updateRecipePhoto } from "./recipes";
+
+const photoMocks = vi.hoisted(() => ({
+  deleteRecipePhotoObject: vi.fn(),
+  getRecipePhotoUrl: vi.fn(async (key: string) => `https://photos.example/${key}`),
+  uploadRecipePhoto: vi.fn(async () => "households/household-1/recipes/new-photo.webp")
+}));
+
+vi.mock("./recipe-photos", () => ({
+  deleteRecipePhotoObject: photoMocks.deleteRecipePhotoObject,
+  getRecipePhotoUrl: photoMocks.getRecipePhotoUrl,
+  uploadRecipePhoto: photoMocks.uploadRecipePhoto,
+  RecipePhotoValidationError: class RecipePhotoValidationError extends Error {}
+}));
 
 type FakeRecipe = {
   id: string;
@@ -9,6 +22,7 @@ type FakeRecipe = {
   instructions: string;
   servings: number;
   photoObjectKey: string | null;
+  sourceUrl: string | null;
   createdAt: Date;
 };
 
@@ -31,6 +45,15 @@ type FakeProduct = {
 };
 
 describe("recipes service", () => {
+  it("creates recipes with stored photo object keys and returns signed photo URLs", async () => {
+    const client = createFakeRecipeClient();
+
+    const recipe = await createRecipe("household-1", { ...validRecipeInput("Сырники"), photoObjectKey: "households/household-1/recipes/syrniki.webp" }, client);
+
+    expect(recipe.photoUrl).toBe("https://photos.example/households/household-1/recipes/syrniki.webp");
+    expect(client.state.recipes[0].photoObjectKey).toBe("households/household-1/recipes/syrniki.webp");
+  });
+
   it("lists only recipes from the requested household", async () => {
     const client = createFakeRecipeClient();
     await createRecipe("household-1", validRecipeInput("Сырники"), client);
@@ -48,13 +71,14 @@ describe("recipes service", () => {
   it("creates a recipe with normalized products and ingredients", async () => {
     const client = createFakeRecipeClient();
 
-    const recipe = await createRecipe("household-1", validRecipeInput(" Сырники "), client);
+    const recipe = await createRecipe("household-1", { ...validRecipeInput(" Сырники "), sourceUrl: " https://example.com/syrniki " }, client);
 
     expect(recipe).toMatchObject({
       id: "recipe-1",
       title: "Сырники",
       instructions: "Смешать и обжарить.",
       servings: 2,
+      sourceUrl: "https://example.com/syrniki",
       ingredients: [
         {
           productId: "product-1",
@@ -82,6 +106,21 @@ describe("recipes service", () => {
     await expect(deleteRecipe("household-1", "recipe-1", client)).resolves.toBe(true);
     await expect(listRecipes("household-1", client)).resolves.toEqual([]);
     await expect(listRecipes("household-2", client)).resolves.toHaveLength(1);
+  });
+
+  it("replaces recipe photos only inside the requested household", async () => {
+    const client = createFakeRecipeClient();
+    await createRecipe("household-1", { ...validRecipeInput("Сырники"), photoObjectKey: "households/household-1/recipes/old.webp" }, client);
+
+    await expect(updateRecipePhoto("household-2", "recipe-1", new File(["new"], "new.webp", { type: "image/webp" }), client)).resolves.toBeNull();
+    await expect(updateRecipePhoto("household-1", "recipe-1", new File(["new"], "new.webp", { type: "image/webp" }), client)).resolves.toMatchObject({
+      id: "recipe-1",
+      photoUrl: "https://photos.example/households/household-1/recipes/new-photo.webp"
+    });
+
+    expect(photoMocks.uploadRecipePhoto).toHaveBeenCalledWith("household-1", expect.any(File));
+    expect(photoMocks.deleteRecipePhotoObject).toHaveBeenCalledWith("households/household-1/recipes/old.webp");
+    expect(client.state.recipes[0].photoObjectKey).toBe("households/household-1/recipes/new-photo.webp");
   });
 });
 
@@ -112,18 +151,45 @@ function createFakeRecipeClient() {
             ingredients: state.ingredients.filter((ingredient) => ingredient.recipeId === recipe.id).sort((left, right) => left.sortOrder - right.sortOrder)
           }))
       ),
-      create: vi.fn(async ({ data }: { data: { householdId: string; title: string; instructions: string; servings: number } }) => {
+      create: vi.fn(async ({ data }: { data: { householdId: string; title: string; instructions: string; servings: number; sourceUrl?: string | null; photoObjectKey?: string | null } }) => {
         const recipe = {
           id: `recipe-${state.recipes.length + 1}`,
           householdId: data.householdId,
           title: data.title,
           instructions: data.instructions,
           servings: data.servings,
-          photoObjectKey: null,
+          photoObjectKey: data.photoObjectKey ?? null,
+          sourceUrl: data.sourceUrl ?? null,
           createdAt: new Date(Date.UTC(2026, 5, 7, 12, state.recipes.length))
         };
         state.recipes.push(recipe);
         return recipe;
+      }),
+      findFirst: vi.fn(async ({ where }: { where: { id: string; householdId: string } }) => {
+        const recipe = state.recipes.find((item) => item.id === where.id && item.householdId === where.householdId);
+
+        if (!recipe) {
+          return null;
+        }
+
+        return {
+          ...recipe,
+          ingredients: state.ingredients.filter((ingredient) => ingredient.recipeId === recipe.id).sort((left, right) => left.sortOrder - right.sortOrder)
+        };
+      }),
+      update: vi.fn(async ({ where, data }: { where: { id: string }; data: { photoObjectKey: string } }) => {
+        const recipe = state.recipes.find((item) => item.id === where.id);
+
+        if (!recipe) {
+          throw new Error("Recipe not found");
+        }
+
+        recipe.photoObjectKey = data.photoObjectKey;
+
+        return {
+          ...recipe,
+          ingredients: state.ingredients.filter((ingredient) => ingredient.recipeId === recipe.id).sort((left, right) => left.sortOrder - right.sortOrder)
+        };
       }),
       deleteMany: vi.fn(async ({ where }: { where: { id: string; householdId: string } }) => {
         const before = state.recipes.length;

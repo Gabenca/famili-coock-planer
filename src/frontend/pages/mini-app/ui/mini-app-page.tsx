@@ -28,6 +28,7 @@ import {
   toggleShoppingItem,
   updateManualShoppingQuantity,
   updateMealServings,
+  updateRecipePhoto,
   useMiniAppStore,
   type MiniAppInitialData
 } from "../model";
@@ -129,8 +130,12 @@ export function MiniAppPage({ initialData }: { initialData?: MiniAppInitialData 
     void removeMeal(id);
   }
 
-  function handleAddRecipe(title: string, ingredients: RecipeIngredient[], instructions: string, photoUrl?: string) {
-    return addRecipe({ title, ingredients, instructions, photoUrl });
+  function handleAddRecipe(title: string, ingredients: RecipeIngredient[], instructions: string, sourceUrl?: string, photoFile?: File, photoUrl?: string) {
+    return addRecipe({ title, ingredients, instructions, sourceUrl, photoFile, photoUrl });
+  }
+
+  function handleUpdateRecipePhoto(recipeId: string, photoFile: File, photoUrl: string) {
+    return updateRecipePhoto(recipeId, photoFile, photoUrl);
   }
 
   return (
@@ -147,7 +152,7 @@ export function MiniAppPage({ initialData }: { initialData?: MiniAppInitialData 
           {dataError ? <p className="mt-3 rounded-md bg-honey/25 px-3 py-2 text-xs font-bold text-slate">{dataError}</p> : null}
 
           <section className="mt-5 flex-1" aria-live="polite">
-            {activeTab === "recipes" ? <RecipesPanel recipes={recipes} showDemoHighlights={showDemoHighlights} onAddRecipe={handleAddRecipe} /> : null}
+            {activeTab === "recipes" ? <RecipesPanel recipes={recipes} showDemoHighlights={showDemoHighlights} onAddRecipe={handleAddRecipe} onUpdateRecipePhoto={handleUpdateRecipePhoto} /> : null}
             {activeTab === "week" ? <WeekPanel recipes={recipes} planItems={planItems} onAddMeal={handleAddMeal} onUpdateMealServings={handleUpdateMealServings} onRemoveMeal={handleRemoveMeal} /> : null}
             {activeTab === "shop" ? (
               <ShopPanel

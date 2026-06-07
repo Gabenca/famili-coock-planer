@@ -9,6 +9,22 @@ const positiveNumberSchema = z.number().finite().positive();
 
 const mealSlotSchema = z.enum(["breakfast", "lunch", "snack", "dinner"]);
 
+const sourceUrlSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return value;
+    }
+
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  },
+  z
+    .string()
+    .url()
+    .refine((value) => value.startsWith("http://") || value.startsWith("https://"))
+    .optional()
+);
+
 export const authBodySchema = z
   .object({
     inviteToken: z.string().trim().min(1).optional()
@@ -18,6 +34,7 @@ export const authBodySchema = z
 export const recipeCreateSchema = z.object({
   title: z.string().trim().min(1),
   instructions: z.string().trim().min(1),
+  sourceUrl: sourceUrlSchema,
   servings: z.number().int().positive().optional().default(2),
   ingredients: z
     .array(

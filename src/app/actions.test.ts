@@ -7,6 +7,7 @@ import {
   createMealPlanItemAction,
   createRecipeAction,
   deleteMealPlanItemAction,
+  updateRecipePhotoAction,
   updateMealPlanItemAction,
   updateShoppingCheckStateAction
 } from "./actions";
@@ -19,8 +20,10 @@ const mocks = vi.hoisted(() => ({
   createRecipe: vi.fn(),
   deleteMealPlanItem: vi.fn(),
   getHouseholdSessionForTelegramUser: vi.fn(),
+  updateRecipePhoto: vi.fn(),
   updateMealPlanItem: vi.fn(),
-  updateShoppingCheckState: vi.fn()
+  updateShoppingCheckState: vi.fn(),
+  uploadRecipePhoto: vi.fn()
 }));
 
 vi.mock("next/headers", () => ({
@@ -52,7 +55,13 @@ vi.mock("@/lib/meal-plans", () => ({
 
 vi.mock("@/lib/recipes", () => ({
   RecipeValidationError: class RecipeValidationError extends Error {},
-  createRecipe: mocks.createRecipe
+  createRecipe: mocks.createRecipe,
+  updateRecipePhoto: mocks.updateRecipePhoto
+}));
+
+vi.mock("@/lib/recipe-photos", () => ({
+  RecipePhotoValidationError: class RecipePhotoValidationError extends Error {},
+  uploadRecipePhoto: mocks.uploadRecipePhoto
 }));
 
 describe("server actions", () => {
@@ -187,6 +196,71 @@ describe("server actions", () => {
       servings: 2,
       ingredients: [{ name: "Творог", quantity: 400, unit: "г" }]
     });
+  });
+
+  it("uploads recipe photos before creating recipes from the signed session cookie", async () => {
+    mockSessionCookie();
+    const photoForm = new FormData();
+    const photo = new File(["image"], "syrniki.webp", { type: "image/webp" });
+    photoForm.set("photo", photo);
+    mocks.getHouseholdSessionForTelegramUser.mockResolvedValue({ householdId: "household-1" });
+    mocks.uploadRecipePhoto.mockResolvedValue("households/household-1/recipes/syrniki.webp");
+    mocks.createRecipe.mockResolvedValue({
+      id: "recipe-1",
+      title: "Сырники",
+      instructions: "Смешать и обжарить.",
+      servings: 2,
+      photoUrl: "https://photos.example/syrniki.webp",
+      ingredients: [{ productId: "curd", name: "Творог", quantity: 400, unit: "г" }]
+    });
+
+    await expect(
+      createRecipeAction(
+        {
+          title: "Сырники",
+          instructions: "Смешать и обжарить.",
+          servings: 2,
+          ingredients: [{ name: "Творог", quantity: 400, unit: "г" }]
+        },
+        photoForm
+      )
+    ).resolves.toMatchObject({
+      recipe: {
+        photoUrl: "https://photos.example/syrniki.webp"
+      }
+    });
+    expect(mocks.uploadRecipePhoto).toHaveBeenCalledWith("household-1", photo);
+    expect(mocks.createRecipe).toHaveBeenCalledWith("household-1", {
+      title: "Сырники",
+      instructions: "Смешать и обжарить.",
+      servings: 2,
+      photoObjectKey: "households/household-1/recipes/syrniki.webp",
+      ingredients: [{ name: "Творог", quantity: 400, unit: "г" }]
+    });
+  });
+
+  it("updates recipe photos from the signed session cookie", async () => {
+    mockSessionCookie();
+    const photoForm = new FormData();
+    const photo = new File(["image"], "new.webp", { type: "image/webp" });
+    photoForm.set("photo", photo);
+    mocks.getHouseholdSessionForTelegramUser.mockResolvedValue({ householdId: "household-1" });
+    mocks.updateRecipePhoto.mockResolvedValue({
+      id: "recipe-1",
+      title: "Сырники",
+      instructions: "Смешать и обжарить.",
+      servings: 2,
+      photoUrl: "https://photos.example/new.webp",
+      ingredients: [{ productId: "curd", name: "Творог", quantity: 400, unit: "г" }]
+    });
+
+    await expect(updateRecipePhotoAction({ recipeId: "recipe-1" }, photoForm)).resolves.toMatchObject({
+      recipe: {
+        id: "recipe-1",
+        photoUrl: "https://photos.example/new.webp"
+      }
+    });
+    expect(mocks.updateRecipePhoto).toHaveBeenCalledWith("household-1", "recipe-1", photo);
   });
 
   it("creates meal plan items from the signed session cookie", async () => {

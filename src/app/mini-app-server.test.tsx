@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { demoWeekDates } from "@/data/demo";
+
 const mocks = vi.hoisted(() => ({
   cookies: vi.fn(),
   getHouseholdSessionForTelegramUser: vi.fn(),
@@ -54,7 +56,7 @@ describe("MiniApp server shell", () => {
 
     expect(screen.getByText("Наша кухня")).toBeInTheDocument();
     expect(mocks.readSessionCookieValue).toHaveBeenCalledWith("signed-cookie");
-    expect(mocks.loadMiniAppData).toHaveBeenCalledWith({ householdId: "household-1", role: "owner", user: { id: "user-1", telegramId: "42" } }, "2026-06-01");
+    expect(mocks.loadMiniAppData).toHaveBeenCalledWith({ householdId: "household-1", role: "owner", user: { id: "user-1", telegramId: "42" } }, demoWeekDates[0]);
   });
 
   it("falls back to demo mode when the signed session cookie is missing", async () => {
