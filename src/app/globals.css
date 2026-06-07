@@ -39,6 +39,52 @@ button {
   cursor: pointer;
 }
 
+@layer utilities {
+  .pt-safe {
+    padding-top: max(theme(spacing.5), env(safe-area-inset-top));
+  }
+
+  .grid-cols-photo-picker {
+    grid-template-columns: theme(spacing.24) minmax(0, 1fr);
+  }
+
+  .grid-cols-ingredient-row {
+    grid-template-columns: minmax(0, 1fr) theme(spacing.20) theme(spacing.16) theme(spacing.9);
+  }
+
+  .grid-cols-action-row {
+    grid-template-columns: minmax(0, 1fr) theme(spacing.11);
+  }
+
+  .grid-cols-day-card {
+    grid-template-columns: theme(spacing.24) minmax(0, 1fr);
+  }
+
+  .grid-cols-meal-row {
+    grid-template-columns: minmax(0, 1fr) theme(spacing.20) theme(spacing.8);
+  }
+
+  .grid-cols-meal-add {
+    grid-template-columns: minmax(0, 1fr) theme(spacing.10);
+  }
+
+  .grid-cols-shopping-form {
+    grid-template-columns: minmax(0, 1fr) theme(spacing.20) theme(spacing.16) theme(spacing.11);
+  }
+
+  .grid-cols-shopping-item {
+    grid-template-columns: theme(spacing.9) minmax(0, 1fr) auto;
+  }
+
+  .grid-cols-quantity-stepper {
+    grid-template-columns: theme(spacing.8) theme(spacing.14) theme(spacing.8) theme(spacing.8);
+  }
+
+  .recipe-photo-placeholder {
+    background: linear-gradient(135deg, transparent 0 34%, rgb(255 255 255 / 0.65) 34% 36%, transparent 36% 64%, rgb(255 255 255 / 0.55) 64% 66%, transparent 66%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

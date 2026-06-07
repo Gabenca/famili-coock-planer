@@ -27,7 +27,9 @@ npm run dev
 1. Подключите репозиторий к Vercel.
 2. Укажите `DATABASE_URL` на внешнюю PostgreSQL-базу.
 3. Добавьте `TELEGRAM_BOT_TOKEN` и `NEXT_PUBLIC_APP_URL` в environment variables проекта.
-4. Используйте `npm run vercel-build` как build command, чтобы Vercel сначала сгенерировал Prisma Client, затем применил миграции и только потом собрал Next.js.
+4. Используйте `npm run vercel-build` как build command.
+5. Для ручного CLI-деплоя используйте `npm run deploy:vercel` после входа в Vercel или при наличии `--token`.
+6. Для production-базы отдельно запускайте `npm run prisma:migrate:deploy` в среде, где `DATABASE_URL` указывает на доступный PostgreSQL.
 
 ## Что реализовано
 

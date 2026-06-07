@@ -7,3 +7,4 @@ tsconfig.tsbuildinfo
 .idea/
 .playwright-mcp/
 .serena/
+.vercel
