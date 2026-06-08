@@ -57,7 +57,7 @@ button {
   }
 
   .grid-cols-day-card {
-    grid-template-columns: theme(spacing.24) minmax(0, 1fr);
+    grid-template-columns: theme(spacing.24) minmax(0, 1fr) auto;
   }
 
   .grid-cols-meal-row {

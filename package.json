@@ -18,7 +18,6 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "@telegram-apps/sdk-react": "^3.3.9",
     "@tma.js/init-data-node": "^1.1.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
