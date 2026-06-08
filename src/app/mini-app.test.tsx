@@ -573,6 +573,10 @@ describe("MiniApp", () => {
     fireEvent.change(screen.getByLabelText("Рецепт приготовления"), { target: { value: "Смешать творог с яйцом, сформировать сырники и обжарить." } });
     fireEvent.change(screen.getByLabelText("Название ингредиента 1"), { target: { value: "Творог" } });
     fireEvent.change(screen.getByLabelText("Количество ингредиента 1"), { target: { value: "400" } });
+    expect(screen.getByRole("combobox", { name: "Единица ингредиента 1" })).toHaveDisplayValue("шт");
+    expect(screen.getByRole("option", { name: "ст. л." })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "ч. л." })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "щепотка" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Единица ингредиента 1"), { target: { value: "г" } });
     fireEvent.click(screen.getByRole("button", { name: "Добавить рецепт" }));
 
@@ -593,6 +597,10 @@ describe("MiniApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "Покупки" }));
     fireEvent.change(screen.getByLabelText("Дополнительный продукт"), { target: { value: "Миндаль" } });
     fireEvent.change(screen.getByLabelText("Количество продукта"), { target: { value: "3" } });
+    expect(screen.getByRole("combobox", { name: "Единица продукта" })).toHaveDisplayValue("шт");
+    expect(screen.getByRole("option", { name: "ст. л." })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "ч. л." })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "щепотка" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Единица продукта"), { target: { value: "г" } });
     fireEvent.click(screen.getByRole("button", { name: "Добавить продукт" }));
 

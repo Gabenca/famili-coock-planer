@@ -93,6 +93,7 @@ export type MiniAppStore = MiniAppState & {
   setRemoteShoppingItems: (items: ShoppingListItem[] | null) => void;
   updateRemoteShoppingItemChecked: (key: string, checked: boolean) => void;
   updateRemoteManualQuantity: (id: string, quantity: number) => void;
+  clearClientData: () => void;
   clearAuthenticatedClientData: (authState: ReadyAuthState) => void;
 };
 

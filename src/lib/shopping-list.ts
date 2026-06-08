@@ -61,6 +61,7 @@ export function buildShoppingList(input: ShoppingListInput): ShoppingListItem[] 
   for (const planItem of input.planItems) {
     const recipe = recipesById.get(planItem.recipeId);
 
+
     if (!recipe) {
       continue;
     }

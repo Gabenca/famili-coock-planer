@@ -113,6 +113,14 @@ export const useMiniAppStore = create<MiniAppStore>((set, get) => ({
     set((state) => ({
       remoteShoppingItems: state.remoteShoppingItems ? state.remoteShoppingItems.map((item) => (item.key === `manual:${id}` ? { ...item, quantity } : item)) : state.remoteShoppingItems
     })),
+  clearClientData: () =>
+    set({
+      recipes: [],
+      planItems: [],
+      checkedKeys: new Set(),
+      extraItems: [],
+      remoteShoppingItems: []
+    }),
   clearAuthenticatedClientData: (authState) =>
     set({
       authState,

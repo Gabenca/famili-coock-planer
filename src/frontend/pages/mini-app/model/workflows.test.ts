@@ -45,6 +45,24 @@ describe("Mini App workflows", () => {
     expect(state.extraItems).toEqual([{ id: "coffee", name: "Кофе", quantity: 1, unit: "шт" }]);
   });
 
+  it("clears demo seed data when Telegram auth fails", async () => {
+    const deps = createWorkflowDependencies({
+      launchParams: { initData: "query_id=abc" },
+      authOk: false
+    });
+
+    await bootstrapTelegramAuth(undefined, deps);
+
+    const state = useMiniAppStore.getState();
+    expect(state.authState).toEqual({
+      status: "error",
+      message: "Не удалось войти через Telegram"
+    });
+    expect(state.recipes).toHaveLength(0);
+    expect(state.planItems).toHaveLength(0);
+    expect(selectShoppingItems(state)).toHaveLength(0);
+  });
+
   it("rolls back optimistic meal add when the action fails", async () => {
     resetMiniAppStore({
       household: {
@@ -730,6 +748,7 @@ function createWorkflowDependencies({
   recipes = [],
   plan = [],
   shopping = [],
+  authOk = true,
   recipesOk = true,
   shoppingOk = true,
   fetchDelay,
@@ -748,6 +767,7 @@ function createWorkflowDependencies({
   recipes?: unknown[];
   plan?: unknown[];
   shopping?: unknown[];
+  authOk?: boolean;
   recipesOk?: boolean;
   shoppingOk?: boolean;
   fetchDelay?: Promise<void>;
@@ -767,7 +787,7 @@ function createWorkflowDependencies({
             role: "owner"
           },
           inviteStatus: "none"
-        });
+        }, authOk);
       }
 
       if (url === "/api/household") {

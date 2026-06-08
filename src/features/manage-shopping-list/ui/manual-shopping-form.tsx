@@ -1,7 +1,7 @@
 import { ListPlus } from "lucide-react";
 import React from "react";
 
-const shoppingUnitOptions = ["шт", "г", "кг", "мл", "л", "уп"];
+import { shoppingUnitOptions } from "@/shared/lib/units";
 
 type ManualShoppingFormProps = {
   extraName: string;

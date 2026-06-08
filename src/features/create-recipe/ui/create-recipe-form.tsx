@@ -3,6 +3,7 @@ import React, { useState } from "react";
 
 import type { RecipeIngredient } from "@/lib/shopping-list";
 import { createProductKey } from "@/shared/lib/product-key";
+import { shoppingUnitOptions } from "@/shared/lib/units";
 
 type RecipeIngredientDraft = {
   id: string;
@@ -111,7 +112,13 @@ export function CreateRecipeForm({ onAddRecipe }: CreateRecipeFormProps) {
             <div key={ingredient.id} className="grid grid-cols-ingredient-row gap-2">
               <input className="h-10 min-w-0 rounded-md border border-ink/10 bg-white/70 px-2 text-sm font-semibold outline-none focus:border-clay" placeholder="Ингредиент" value={ingredient.name} onChange={(event) => updateIngredient(ingredient.id, "name", event.target.value)} aria-label={`Название ингредиента ${index + 1}`} />
               <input className="h-10 rounded-md border border-ink/10 bg-white/70 px-2 text-center text-sm font-black outline-none focus:border-clay" type="number" min="0.01" step="any" value={ingredient.quantity} onChange={(event) => updateIngredient(ingredient.id, "quantity", event.target.value)} aria-label={`Количество ингредиента ${index + 1}`} />
-              <input className="h-10 rounded-md border border-ink/10 bg-white/70 px-2 text-center text-sm font-black outline-none focus:border-clay" placeholder="шт" value={ingredient.unit} onChange={(event) => updateIngredient(ingredient.id, "unit", event.target.value)} aria-label={`Единица ингредиента ${index + 1}`} />
+              <select className="h-10 rounded-md border border-ink/10 bg-white/70 px-2 text-center text-sm font-black outline-none focus:border-clay" value={ingredient.unit} onChange={(event) => updateIngredient(ingredient.id, "unit", event.target.value)} aria-label={`Единица ингредиента ${index + 1}`}>
+                {shoppingUnitOptions.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </select>
               <button type="button" className="flex h-10 w-9 items-center justify-center rounded-md text-slate hover:bg-ink/5" onClick={() => removeIngredient(ingredient.id)} aria-label={`Убрать ингредиент ${index + 1}`}>
                 <Trash2 size={15} />
               </button>

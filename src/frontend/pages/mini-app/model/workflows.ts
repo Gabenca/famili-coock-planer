@@ -46,6 +46,8 @@ export async function bootstrapTelegramAuth(initialData: unknown, deps: Workflow
     return;
   }
 
+  useMiniAppStore.getState().clearClientData();
+
   try {
     const response = await deps.fetch("/api/auth/telegram", {
       method: "POST",
